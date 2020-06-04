@@ -11,7 +11,8 @@ using Steeltoe.CloudFoundry.Connector.MySql.EFCore;
 using Steeltoe.Management.CloudFoundry;
 using Steeltoe.Discovery.Client;
 using Steeltoe.Common.Discovery;
-
+using Microsoft.Extensions.Logging;
+using Steeltoe.CircuitBreaker.Hystrix;
 namespace AllocationsServer
 {
     public class Startup
@@ -41,9 +42,10 @@ namespace AllocationsServer
                     BaseAddress = new Uri(Configuration.GetValue<string>("REGISTRATION_SERVER_ENDPOINT"))
                 };
 
-                return new ProjectClient(httpClient);
+                var logger = sp.GetService<ILogger<ProjectClient>>();
+                 return new ProjectClient(httpClient, logger);
             });
-            
+            services.AddHystrixMetricsStream(Configuration);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -57,13 +59,15 @@ namespace AllocationsServer
             app.UseCloudFoundryActuators();
             app.UseDiscoveryClient();
             app.UseRouting();
-
+            app.UseHystrixMetricsStream();
+            app.UseHystrixRequestContext();
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
             });
+            
         }
     }
 }
